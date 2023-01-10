@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi import Body, Path, Query
+from fastapi import status
 
 
 app = FastAPI()
@@ -26,7 +27,7 @@ class Serie(BaseModel):
                 "title": "Prueba",
                 "category": "Action",
                 "year": 2021,
-                "season": 4
+                "seasons": 4
             }
         }
 
@@ -63,16 +64,19 @@ def home():
     return {"message": "Hi, FastAPI...!"}
 
 
+
 ##### SERIES ######
+
 @app.get('/series', tags=['series'], response_model= List[Serie])
 def get_serie_list() -> List[Serie]:
     return JSONResponse(content=series)
 
 
-@app.post('/series/', tags=['series'])
+
+@app.post('/series/', tags=['series'], response_model=dict, status_code=status.HTTP_201_CREATED)
 def create_serie(
     serie: Serie
-):
+) -> dict:
     series.append({
         "id": serie.id,
         "title": serie.title,
@@ -80,47 +84,54 @@ def create_serie(
         "year": serie.year,
         "season": serie.seasons
     })
-    return series
+    return JSONResponse(content={"message": "Object Created successfully"}, status_code=status.HTTP_201_CREATED)
 
 
-@app.get('/series/', tags=['series'], response_model=List[Serie])
+
+@app.get('/series/', tags=['series'], response_model=List[Serie], status_code=status.HTTP_200_OK)
 def get_serie_by_category(
     category: str = Query(min_length=4)
 ) -> List[Serie]:
     data = [serie for serie in series if serie['category'] == category]
-    return JSONResponse(content=data)
+    if data:
+        return JSONResponse(content=data, status_code=status.HTTP_200_OK)
+    return JSONResponse(content=[], status_code=status.HTTP_400_BAD_REQUEST)
 
 
-@app.get('/series/{id}', tags=['series'], response_model=Serie)
+
+@app.get('/series/{id}', tags=['series'], response_model=Serie, status_code=status.HTTP_200_OK)
 def get_serie(
     id: int = Path(..., ge=1)
 ) -> Serie:
     for serie in series:
         if serie['id'] == id:
-            return JSONResponse(content=serie)
-    return JSONResponse(content={"message": "Object not found"})
+            return JSONResponse(content=serie, status_code=status.HTTP_200_OK)
+    return JSONResponse(content={"message": "Object not found"}, status_code=status.HTTP_400_BAD_REQUEST)
 
 
-@app.put('/series/{id}', tags=['series'], response_model=Dict)
+
+@app.put('/series/{id}', tags=['series'], response_model=dict, status_code=status.HTTP_200_OK)
 def update_serie(
     serie: Serie,
     id: int = Path(..., ge=1),
-) -> Dict:
+) -> dict:
     for item in series:
         if item['id'] == id:
             item['title'] = serie.title
             item['category'] = serie.category
             item['year'] = serie.year
             item['seasons'] = serie.seasons
-            return JSONResponse(content={"message": "Object updated successfully"})
-    return JSONResponse(content={"message": "Object not found"})
+            return JSONResponse(content={"message": "Object updated successfully"}, status_code=status.HTTP_200_OK)
+    return JSONResponse(content={"message": "Object not found"}, status_code=status.HTTP_400_BAD_REQUEST)
 
-@app.delete('/series/{id}', tags=['series'], response_model= Dict)
+
+
+@app.delete('/series/{id}', tags=['series'], response_model= dict, status_code=status.HTTP_200_OK)
 def delete_serie(
     id: int = Path(..., ge=1)
-) -> Dict:
+) -> dict:
     for serie in series:
         if serie['id'] == id:
             series.remove(serie)
-            return JSONResponse(content={"message": "Object deleted successfully"})
-    return JSONResponse(content={"message": "Object not found"})
+            return JSONResponse(content={"message": "Object deleted successfully"}, status_code=status.HTTP_200_OK)
+    return JSONResponse(content={"message": "Object not found"}, status_code=status.HTTP_400_BAD_REQUEST)
