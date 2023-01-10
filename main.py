@@ -1,7 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel, Field
 from fastapi import FastAPI
-from fastapi import Body
+from fastapi import Body, Path, Query
 
 
 app = FastAPI()
@@ -25,7 +25,7 @@ class Serie(BaseModel):
                 "title": "Prueba",
                 "category": "Action",
                 "year": 2021,
-                "season": 4 
+                "season": 4
             }
         }
 
@@ -68,7 +68,7 @@ def get_serie_list():
 
 @app.get('/series/{id}', tags=['series'])
 def get_serie(
-    id: int
+    id: int = Path(..., ge=1)
 ):
     for serie in series:
         if serie['id'] == id:
@@ -78,7 +78,7 @@ def get_serie(
 
 @app.get('/series/', tags=['series'])
 def get_serie_by_category(
-    category: str
+    category: str = Query(min_length=4)
 ):
     return [serie for serie in series if serie['category'] == category]
 
@@ -100,7 +100,7 @@ def create_serie(
 
 @app.delete('/series/{id}', tags=['series'])
 def delete_serie(
-    id: int
+    id: int = Path(..., ge=1)
 ):
     for serie in series:
         if serie['id'] == id:
@@ -110,8 +110,8 @@ def delete_serie(
 
 @app.put('/series/{id}', tags=['series'])
 def update_serie(
-    id: int,
-    serie: Serie
+    serie: Serie,
+    id: int = Path(..., ge=1),
 ):
     for item in series:
         if item['id'] == id:
