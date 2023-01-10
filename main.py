@@ -1,6 +1,7 @@
-from typing import Optional
+from typing import Optional, List, Dict
 from pydantic import BaseModel, Field
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi import Body, Path, Query
 
 
@@ -53,34 +54,19 @@ series = [
         "year": 2022,
         "seasons": 1
     }
-
 ]
 
+
+#### ROUTES #####
 @app.get('/', tags=['home'])
 def home():
     return {"message": "Hi, FastAPI...!"}
 
 
-@app.get('/series', tags=['series'])
-def get_serie_list():
-    return series
-
-
-@app.get('/series/{id}', tags=['series'])
-def get_serie(
-    id: int = Path(..., ge=1)
-):
-    for serie in series:
-        if serie['id'] == id:
-            return serie
-    return []
-
-
-@app.get('/series/', tags=['series'])
-def get_serie_by_category(
-    category: str = Query(min_length=4)
-):
-    return [serie for serie in series if serie['category'] == category]
+##### SERIES ######
+@app.get('/series', tags=['series'], response_model= List[Serie])
+def get_serie_list() -> List[Serie]:
+    return JSONResponse(content=series)
 
 
 @app.post('/series/', tags=['series'])
@@ -97,27 +83,44 @@ def create_serie(
     return series
 
 
+@app.get('/series/', tags=['series'], response_model=List[Serie])
+def get_serie_by_category(
+    category: str = Query(min_length=4)
+) -> List[Serie]:
+    data = [serie for serie in series if serie['category'] == category]
+    return JSONResponse(content=data)
 
-@app.delete('/series/{id}', tags=['series'])
-def delete_serie(
+
+@app.get('/series/{id}', tags=['series'], response_model=Serie)
+def get_serie(
     id: int = Path(..., ge=1)
-):
+) -> Serie:
     for serie in series:
         if serie['id'] == id:
-            series.remove(serie)
-    return series
+            return JSONResponse(content=serie)
+    return JSONResponse(content={"message": "Object not found"})
 
 
-@app.put('/series/{id}', tags=['series'])
+@app.put('/series/{id}', tags=['series'], response_model=Dict)
 def update_serie(
     serie: Serie,
     id: int = Path(..., ge=1),
-):
+) -> Dict:
     for item in series:
         if item['id'] == id:
             item['title'] = serie.title
             item['category'] = serie.category
             item['year'] = serie.year
             item['seasons'] = serie.seasons
-            return item
+            return JSONResponse(content={"message": "Object updated successfully"})
+    return JSONResponse(content={"message": "Object not found"})
 
+@app.delete('/series/{id}', tags=['series'], response_model= Dict)
+def delete_serie(
+    id: int = Path(..., ge=1)
+) -> Dict:
+    for serie in series:
+        if serie['id'] == id:
+            series.remove(serie)
+            return JSONResponse(content={"message": "Object deleted successfully"})
+    return JSONResponse(content={"message": "Object not found"})
