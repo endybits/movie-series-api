@@ -1,9 +1,34 @@
+from typing import Optional
+from pydantic import BaseModel, Field
 from fastapi import FastAPI
 from fastapi import Body
+
 
 app = FastAPI()
 app.title = "Netflix API"
 app.version = "0.0.1"
+
+
+id: int = Body(),
+
+class Serie(BaseModel):
+    id: Optional[int] = Field(ge=1)
+    title: str = Field(..., max_length=40, min_length=2)
+    category: str = Field(..., max_length=40, min_length=2)
+    year: int = Field(default=2022, le=2022)
+    seasons: int = Field(ge=1)
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "id": 10,
+                "title": "Prueba",
+                "category": "Action",
+                "year": 2021,
+                "season": 4 
+            }
+        }
+
 
 
 series = [
@@ -60,18 +85,14 @@ def get_serie_by_category(
 
 @app.post('/series/', tags=['series'])
 def create_serie(
-    id: int = Body(),
-    title: str = Body(),
-    category: str = Body(),
-    year: int = Body(), 
-    seasons: int = Body()
+    serie: Serie
 ):
     series.append({
-        "id": id,
-        "title": title,
-        "category": category,
-        "year": year,
-        "season": seasons
+        "id": serie.id,
+        "title": serie.title,
+        "category": serie.category,
+        "year": serie.year,
+        "season": serie.seasons
     })
     return series
 
@@ -90,16 +111,13 @@ def delete_serie(
 @app.put('/series/{id}', tags=['series'])
 def update_serie(
     id: int,
-    title: str = Body(),
-    category: str = Body(),
-    year: int = Body(), 
-    seasons: int = Body()
+    serie: Serie
 ):
-    for serie in series:
-        if serie['id'] == id:
-            serie['title'] = title
-            serie['category'] = category,
-            serie['year'] = year,
-            serie['seasons'] = seasons,
-            return serie
+    for item in series:
+        if item['id'] == id:
+            item['title'] = serie.title
+            item['category'] = serie.category
+            item['year'] = serie.year
+            item['seasons'] = serie.seasons
+            return item
 
