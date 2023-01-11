@@ -1,17 +1,37 @@
 from typing import Optional, List, Dict
 from pydantic import BaseModel, Field
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi import Body, Path, Query
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import JSONResponse
 from fastapi import status
+from fastapi.encoders import jsonable_encoder
 
+from jwt_manager import create_token, validate_token
 
 app = FastAPI()
 app.title = "Netflix API"
 app.version = "0.0.1"
 
 
-id: int = Body(),
+class JWTBearer(HTTPBearer):
+    async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
+        auth = await super().__call__(request)
+        data = validate_token(auth.credentials)
+        if data['email'] != "mail@endybits.dev" or data['password'] != "coding123":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid credentials")
+
+
+class User(BaseModel):
+    email: str
+    password: str
+    class Config:
+        schema_extra = {
+            "example": {
+                "email": "mail@endybits.dev",
+                "password": "coding123"
+            }
+        }
 
 class Serie(BaseModel):
     id: Optional[int] = Field(ge=1)
@@ -64,6 +84,15 @@ def home():
     return {"message": "Hi, FastAPI...!"}
 
 
+@app.post('/login', tags=['auth'])
+def login(user: User):
+    if user.email == 'mail@endybits.dev' and user.password=='coding123':
+        token = create_token(jsonable_encoder(user))
+        print(validate_token(token))
+        return JSONResponse(content=token, status_code=status.HTTP_200_OK)
+    return JSONResponse(content={"message": "Unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED)
+
+
 
 ##### SERIES ######
 
@@ -73,7 +102,7 @@ def get_serie_list() -> List[Serie]:
 
 
 
-@app.post('/series/', tags=['series'], response_model=dict, status_code=status.HTTP_201_CREATED)
+@app.post('/series/', tags=['series'], response_model=dict, status_code=status.HTTP_201_CREATED, dependencies=[Depends(JWTBearer())])
 def create_serie(
     serie: Serie
 ) -> dict:
@@ -110,7 +139,7 @@ def get_serie(
 
 
 
-@app.put('/series/{id}', tags=['series'], response_model=dict, status_code=status.HTTP_200_OK)
+@app.put('/series/{id}', tags=['series'], response_model=dict, status_code=status.HTTP_200_OK, dependencies=[Depends(JWTBearer())])
 def update_serie(
     serie: Serie,
     id: int = Path(..., ge=1),
@@ -126,7 +155,7 @@ def update_serie(
 
 
 
-@app.delete('/series/{id}', tags=['series'], response_model= dict, status_code=status.HTTP_200_OK)
+@app.delete('/series/{id}', tags=['series'], response_model= dict, status_code=status.HTTP_200_OK, dependencies=[Depends(JWTBearer())])
 def delete_serie(
     id: int = Path(..., ge=1)
 ) -> dict:
